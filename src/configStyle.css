@@ -37,3 +37,159 @@
 .config-inline-form { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .config-toggle { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;}
 .config-actions { display: flex; gap: 1rem; }
+
+/* Additional styles for configuration components */
+
+.config-checkbox {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--primary-color);
+}
+
+.config-description {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-left: 1.5rem;
+    margin-top: 0.25rem;
+}
+
+.config-dropdown-container {
+    margin-bottom: 1rem;
+}
+
+.config-custom-input {
+    width: 100%;
+    margin-top: 0.5rem;
+}
+
+.config-bang-list {
+    margin-top: 1rem;
+}
+
+.config-bang-item {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.config-bang-display {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.config-bang-name {
+    font-weight: 600;
+    color: var(--primary-color);
+    font-family: monospace;
+    font-size: 0.95rem;
+    min-width: 60px;
+}
+
+.config-bang-url {
+    flex: 1;
+    color: var(--text-secondary);
+    font-family: monospace;
+    font-size: 0.875rem;
+    word-break: break-all;
+}
+
+.config-bang-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.config-btn-small {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+.config-btn-danger {
+    background: #ef4444;
+}
+
+.config-btn-danger:hover {
+    background: #dc2626;
+}
+
+.config-btn-secondary {
+    background: var(--text-secondary);
+    color: var(--bg-primary);
+}
+
+.config-btn-secondary:hover {
+    background: var(--text-primary);
+}
+
+.config-bang-edit {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.config-bang-edit .config-input {
+    width: 100%;
+    margin-bottom: 0.5rem;
+}
+
+.config-bang-edit-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.config-search-settings .config-toggle {
+    margin-bottom: 1.5rem;
+}
+
+.config-instant-redirect .config-dropdown-container {
+    margin-top: 1rem;
+    padding-left: 1rem;
+    border-left: 3px solid var(--primary-color);
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .config-container {
+        margin: 1rem;
+        padding: 1rem;
+    }
+    
+    .config-bang-display {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .config-bang-actions {
+        width: 100%;
+    }
+    
+    .config-inline-form {
+        flex-direction: column;
+    }
+    
+    .config-inline-form .config-input,
+    .config-inline-form .config-btn {
+        width: 100%;
+        margin-right: 0;
+    }
+}
+
+/* Focus states for better accessibility */
+.config-checkbox:focus,
+.config-select:focus,
+.config-input:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.config-btn:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
