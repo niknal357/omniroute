@@ -1,0 +1,28 @@
+import { processQuery } from './queryProcessor.ts';
+
+const doMagic = () => {
+    const url = new URL(window.location.href);
+    const query = url.searchParams.get("q")?.trim() ?? "";
+    if (query) {
+        processQuery(query);
+        return null;
+    }
+    if (url.pathname === '/config') {
+        // Load the config page
+        import('./configPage.ts').then(module => {
+            module.renderConfigPage();
+        });
+    } else {
+        if (url.pathname !== '/') {
+            // Redirect to homepage if not on config page
+            window.location.href = '/';
+            return null;
+        }
+        // Render the homepage
+        import('./homePage.ts').then(module => {
+            module.renderHomePage();
+        });
+    }
+}
+
+doMagic();
