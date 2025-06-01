@@ -15,6 +15,7 @@ interface SearchEngine {
 
 interface ConfigData {
     useDDGBangs: boolean;
+    useKagiBangs: boolean;
     bangOverrides: BangOverride[];
     fallbackEngine: SearchEngine;
     realTimeHintsEngine: SearchEngine;
@@ -29,15 +30,20 @@ interface ConfigData {
     };
 }
 
+let uniqueIdCounter = 0;
+function generateUniqueId() {
+    return `config-${uniqueIdCounter++}`;
+}
+
 // Default search engines
 const DEFAULT_ENGINES: SearchEngine[] = [
     { name: 'Google', url: 'https://www.google.com/search?q={query}' },
     { name: 'Bing', url: 'https://www.bing.com/search?q={query}' },
     { name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q={query}', canInstaRedirect: true },
-    { name: 'Custom', url: '' }
+    { name: 'Custom', url: '', canInstaRedirect: true }
 ];
 
-const INSTANT_REDIRECT_ENGINES = DEFAULT_ENGINES.filter(engine => engine.name !== 'Google');
+const INSTANT_REDIRECT_ENGINES = DEFAULT_ENGINES.filter(engine => engine.canInstaRedirect);
 
 function createSection(title: string, cc: HTMLDivElement) {
     const section = document.createElement('section');
@@ -50,28 +56,28 @@ function createSection(title: string, cc: HTMLDivElement) {
 }
 
 function createToggle(
-    label: string, 
-    checked: boolean, 
+    label: string,
+    checked: boolean,
     onChange: (checked: boolean) => void,
     description?: string
 ): HTMLDivElement {
     const toggleDiv = document.createElement('div');
     toggleDiv.className = 'config-toggle';
     
+    const toggleId = generateUniqueId();
+
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.checked = checked;
     checkbox.className = 'config-checkbox';
+    checkbox.id = toggleId;
     checkbox.addEventListener('change', () => onChange(checkbox.checked));
     
     const labelEl = document.createElement('label');
     labelEl.className = 'config-label';
     labelEl.textContent = label;
     labelEl.style.cursor = 'pointer';
-    labelEl.addEventListener('click', () => {
-        checkbox.checked = !checkbox.checked;
-        onChange(checkbox.checked);
-    });
+    labelEl.setAttribute('for', toggleId);
     
     toggleDiv.appendChild(checkbox);
     toggleDiv.appendChild(labelEl);
@@ -95,13 +101,17 @@ function createDropdown(
 ): HTMLDivElement {
     const container = document.createElement('div');
     container.className = 'config-dropdown-container';
+
+    const selectId = generateUniqueId();
     
     const labelEl = document.createElement('label');
     labelEl.className = 'config-label';
     labelEl.textContent = label;
+    labelEl.setAttribute('for', selectId);
     
     const select = document.createElement('select');
     select.className = 'config-select';
+    select.id = selectId;
     
     options.forEach(engine => {
         const option = document.createElement('option');
@@ -117,6 +127,7 @@ function createDropdown(
     customInput.placeholder = 'Enter custom search URL (use {query} as placeholder)';
     customInput.value = selected.name === 'Custom' ? selected.url : '';
     customInput.style.display = selected.name === 'Custom' ? 'block' : 'none';
+    customInput.id = generateUniqueId();
     
     select.addEventListener('change', () => {
         const selectedEngine = options.find(e => e.name === select.value);
@@ -261,11 +272,24 @@ function createBangList(
 }
 
 function createSearchSettings(
+    fallbackEngine: ConfigData['fallbackEngine'],
     settings: ConfigData['searchSettings'],
-    onChange: (settings: ConfigData['searchSettings']) => void
+    onChange: (engine: ConfigData['fallbackEngine'], settings: ConfigData['searchSettings']) => void
 ): HTMLDivElement {
+    const outerContainer = document.createElement('div');
+    outerContainer.className = 'config-search-settings-outer';
+    const fallbackDropdown = createDropdown(
+        'Default Search Engine',
+        DEFAULT_ENGINES,
+        fallbackEngine,
+        (engine) => {
+            const newSettings = { ...settings };
+            onChange(engine, newSettings);
+        }
+    );
+    outerContainer.appendChild(fallbackDropdown);
     const container = document.createElement('div');
-    container.className = 'config-search-settings';
+    container.className = 'config-search-settings config-indented';
     
     const toggles = [
         {
@@ -291,14 +315,15 @@ function createSearchSettings(
             settings[key],
             (checked) => {
                 const newSettings = { ...settings, [key]: checked };
-                onChange(newSettings);
+                onChange(fallbackEngine, newSettings);
             },
             description
         );
         container.appendChild(toggle);
     });
     
-    return container;
+    outerContainer.appendChild(container);
+    return outerContainer;
 }
 
 function createInstantRedirectSection(
@@ -322,6 +347,7 @@ function createInstantRedirectSection(
         (engine) => onChange({ ...config, engine })
     );
     
+    engineDropdown.classList.add('config-indented');
     engineDropdown.style.display = config.enabled ? 'block' : 'none';
     
     // Update visibility when toggle changes
@@ -349,6 +375,7 @@ export const renderConfigPage = () => {
     // Sample configuration data (replace with your actual data loading)
     let configData: ConfigData = {
         useDDGBangs: true,
+        useKagiBangs: true,
         bangOverrides: [
             { bang: 'gh', url: 'https://github.com/search?q={query}' },
             { bang: 'so', url: 'https://stackoverflow.com/search?q={query}' }
@@ -366,10 +393,10 @@ export const renderConfigPage = () => {
         }
     };
     
-    // DDG Bangs Section
-    const ddgSection = createSection('DuckDuckGo Bangs', configContainer);
+    // External Bangs Section
+    const prepackagedBangsSection = createSection('Pre-packaged Bangs', configContainer);
     const ddgToggle = createToggle(
-        'Use DuckDuckGo Default Bangs',
+        'Use DuckDuckGo Packaged Bangs',
         configData.useDDGBangs,
         (checked) => {
             configData.useDDGBangs = checked;
@@ -377,7 +404,17 @@ export const renderConfigPage = () => {
         },
         'Enable built-in DuckDuckGo bang shortcuts'
     );
-    ddgSection.appendChild(ddgToggle);
+    prepackagedBangsSection.appendChild(ddgToggle);
+    const kagiToggle = createToggle(
+        'Use Kagi Default Bangs',
+        configData.useKagiBangs,
+        (checked) => {
+            configData.useKagiBangs = checked;
+            // Save config here
+        },
+        'Enable built-in Kagi bang shortcuts'
+    );
+    prepackagedBangsSection.appendChild(kagiToggle);
     
     // Custom Bangs Section
     const bangsSection = createSection('Custom Bang Overrides', configContainer);
@@ -400,27 +437,26 @@ export const renderConfigPage = () => {
     
     // Fallback Engine Section
     const fallbackSection = createSection('Fallback Search Engine', configContainer);
-    const fallbackDropdown = createDropdown(
-        'Default Search Engine',
-        DEFAULT_ENGINES,
-        configData.fallbackEngine,
-        (engine) => {
-            configData.fallbackEngine = engine;
-            // Save config here
-        }
-    );
-    fallbackSection.appendChild(fallbackDropdown);
-    
-    // Search Settings Section
-    const settingsSection = createSection('Search Engine Settings', configContainer);
+    // const fallbackDropdown = createDropdown(
+    //     'Default Search Engine',
+    //     DEFAULT_ENGINES,
+    //     configData.fallbackEngine,
+    //     (engine) => {
+    //         configData.fallbackEngine = engine;
+    //         // Save config here
+    //     }
+    // );
+
     const searchSettings = createSearchSettings(
+        configData.fallbackEngine,
         configData.searchSettings,
-        (settings) => {
+        (engine, settings) => {
+            configData.fallbackEngine = engine;
             configData.searchSettings = settings;
             // Save config here
         }
     );
-    settingsSection.appendChild(searchSettings);
+    fallbackSection.appendChild(searchSettings);
     
     // Real-time Hints Section
     const hintsSection = createSection('Real-time Search Hints', configContainer);
