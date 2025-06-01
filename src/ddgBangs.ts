@@ -1,4 +1,4 @@
-// taken from duckduckgo.com/bang.js
+// taken from https://duckduckgo.com/bang.js 01.06.2025
 export const ddgBangs = [
     {
         c: "Tech",
