@@ -13,20 +13,27 @@ interface SearchEngine {
     canInstaRedirect?: boolean;
 }
 
+// Sparse engine reference - either just a name or full custom engine data
+interface EngineReference {
+    name: string;
+    url?: string; // Only present for custom engines
+}
+
 interface ConfigData {
+    version: string;
     useDDGBangs: boolean;
     useKagiBangs: boolean;
     bangOverrides: BangOverride[];
-    fallbackEngine: SearchEngine;
-    realTimeHintsEngine: SearchEngine;
+    fallbackEngine: EngineReference;
+    realTimeHintsEngine: EngineReference;
     instantRedirect: {
         enabled: boolean;
-        engine: SearchEngine;
+        engine: EngineReference;
     };
     searchSettings: {
         googleUdm14: boolean;
         bingNoJs: boolean;
-        duckSafeSearch: boolean;
+        duckSafeSearch: true;
     };
 }
 
@@ -42,6 +49,30 @@ const DEFAULT_ENGINES: SearchEngine[] = [
     { name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q={query}', canInstaRedirect: true },
     { name: 'Custom', url: '', canInstaRedirect: true }
 ];
+
+// Helper functions to convert between sparse and full engine data
+function engineReferenceToFull(ref: EngineReference): SearchEngine {
+    if (ref.name === 'Custom' && ref.url) {
+        return { name: 'Custom', url: ref.url, canInstaRedirect: true };
+    }
+    
+    const defaultEngine = DEFAULT_ENGINES.find(e => e.name === ref.name);
+    if (defaultEngine) {
+        return defaultEngine;
+    }
+    
+    // Fallback if engine not found
+    return DEFAULT_ENGINES[0];
+}
+
+function engineFullToReference(engine: SearchEngine): EngineReference {
+    if (engine.name === 'Custom') {
+        return { name: 'Custom', url: engine.url };
+    }
+    
+    // For predefined engines, only store the name
+    return { name: engine.name };
+}
 
 const INSTANT_REDIRECT_ENGINES = DEFAULT_ENGINES.filter(engine => engine.canInstaRedirect);
 
@@ -95,14 +126,15 @@ function createToggle(
 function createDropdown(
     label: string,
     options: SearchEngine[],
-    selected: SearchEngine,
-    onChange: (engine: SearchEngine) => void,
+    selectedRef: EngineReference,
+    onChange: (engineRef: EngineReference) => void,
     allowCustom: boolean = true
 ): HTMLDivElement {
     const container = document.createElement('div');
     container.className = 'config-dropdown-container';
 
     const selectId = generateUniqueId();
+    const selected = engineReferenceToFull(selectedRef);
     
     const labelEl = document.createElement('label');
     labelEl.className = 'config-label';
@@ -138,7 +170,7 @@ function createDropdown(
                 onChange({ name: 'Custom', url: customInput.value });
             } else {
                 customInput.style.display = 'none';
-                onChange(selectedEngine);
+                onChange(engineFullToReference(selectedEngine));
             }
         }
     });
@@ -186,8 +218,8 @@ function createBangList(
                     </div>
                 </div>
                 <div class="config-bang-edit" style="display: none;">
-                    <input type="text" class="config-input bang-input" value="${bang.bang}" placeholder="Bang name (without !)">
-                    <input type="text" class="config-input url-input" value="${bang.url}" placeholder="Search URL (use {query} as placeholder)">
+                    <input type="text" class="config-input bang-input" value="${bang.bang}" placeholder="Bang (without !)">
+                    <input type="text" class="config-input url-input" value="${bang.url}" placeholder="URL (use {query} placeholder)">
                     <div class="config-bang-edit-actions">
                         <button class="config-btn save-btn">Save</button>
                         <button class="config-btn config-btn-secondary cancel-btn">Cancel</button>
@@ -239,8 +271,8 @@ function createBangList(
     const addForm = document.createElement('div');
     addForm.className = 'config-inline-form';
     addForm.innerHTML = `
-        <input type="text" class="config-input" id="newBangName" placeholder="Bang name (without !)">
-        <input type="text" class="config-input" id="newBangUrl" placeholder="Search URL (use {query} as placeholder)">
+        <input type="text" class="config-input" id="newBangName" placeholder="Bang (without !)">
+        <input type="text" class="config-input" id="newBangUrl" placeholder="URL (use {query} placeholder)">
         <button class="config-btn" id="addBangBtn">Add Bang</button>
     `;
     
@@ -272,22 +304,24 @@ function createBangList(
 }
 
 function createSearchSettings(
-    fallbackEngine: ConfigData['fallbackEngine'],
+    fallbackEngineRef: EngineReference,
     settings: ConfigData['searchSettings'],
-    onChange: (engine: ConfigData['fallbackEngine'], settings: ConfigData['searchSettings']) => void
+    onChange: (engineRef: EngineReference, settings: ConfigData['searchSettings']) => void
 ): HTMLDivElement {
     const outerContainer = document.createElement('div');
     outerContainer.className = 'config-search-settings-outer';
+    
     const fallbackDropdown = createDropdown(
         'Default Search Engine',
         DEFAULT_ENGINES,
-        fallbackEngine,
-        (engine) => {
+        fallbackEngineRef,
+        (engineRef) => {
             const newSettings = { ...settings };
-            onChange(engine, newSettings);
+            onChange(engineRef, newSettings);
         }
     );
     outerContainer.appendChild(fallbackDropdown);
+    
     const container = document.createElement('div');
     container.className = 'config-search-settings config-indented';
     
@@ -315,7 +349,7 @@ function createSearchSettings(
             settings[key],
             (checked) => {
                 const newSettings = { ...settings, [key]: checked };
-                onChange(fallbackEngine, newSettings);
+                onChange(fallbackEngineRef, newSettings);
             },
             description
         );
@@ -327,8 +361,8 @@ function createSearchSettings(
 }
 
 function createInstantRedirectSection(
-    config: ConfigData['instantRedirect'],
-    onChange: (config: ConfigData['instantRedirect']) => void
+    config: { enabled: boolean; engine: EngineReference },
+    onChange: (config: { enabled: boolean; engine: EngineReference }) => void
 ): HTMLDivElement {
     const container = document.createElement('div');
     container.className = 'config-instant-redirect';
@@ -337,14 +371,16 @@ function createInstantRedirectSection(
         'Enable Instant Redirect to First Result',
         config.enabled,
         (enabled) => onChange({ ...config, enabled }),
-        'Automatically redirect to the first search result'
+        'Automatically redirect to the first search result using an empty bang (!)'
     );
+    
+    const INSTANT_REDIRECT_ENGINES = DEFAULT_ENGINES.filter(engine => engine.canInstaRedirect);
     
     const engineDropdown = createDropdown(
         'Search Engine for Instant Redirect',
         INSTANT_REDIRECT_ENGINES,
         config.engine,
-        (engine) => onChange({ ...config, engine })
+        (engineRef) => onChange({ ...config, engine: engineRef })
     );
     
     engineDropdown.classList.add('config-indented');
@@ -374,6 +410,7 @@ export const renderConfigPage = () => {
     
     // Sample configuration data (replace with your actual data loading)
     let configData: ConfigData = {
+        version: '1.0',
         useDDGBangs: true,
         useKagiBangs: true,
         bangOverrides: [
