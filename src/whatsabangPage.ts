@@ -1,5 +1,6 @@
 import './globalStyle.css'
 import './configStyle.css'
+import './whatsabangStyle.css'
 
 export const renderWhatsABangPage = () => {
     const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -35,7 +36,7 @@ export const renderWhatsABangPage = () => {
                 </ul>
             </section>
             <section class="config-section">
-                <h2 class="config-subtitle">Why Omniroute Bangs Are Better</h2>
+                <h2 class="config-subtitle">Why Omniroute Is Great</h2>
                 <ul class="config-list">
                     <li>
                         <b>No ducking around:</b> Bangs go exactly where you want, instantly. No extra search results page in the middle.
@@ -47,7 +48,7 @@ export const renderWhatsABangPage = () => {
                         <b>Personalized:</b> Fully customize your own bangs, or override built-ins with your preferred URLs.
                     </li>
                     <li>
-                        <b>Clean, fast, no tracking:</b> Unlike some other search routers, Omniroute runs locally and doesn’t track you.
+                        <b>Clean, fast, no tracking:</b> Omniroute runs locally and doesn’t track you. This also means it's super fast — no waiting for a server to respond.<br>
                     </li>
                 </ul>
             </section>
