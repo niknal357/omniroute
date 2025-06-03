@@ -65,7 +65,7 @@ function generateUniqueId() {
 const DEFAULT_ENGINES: SearchEngine[] = [
     { name: 'Google', url: 'https://google.com/search?q={query}', canInstaRedirect: true },
     { name: 'Bing', url: 'https://bing.com/search?q={query}' },
-    { name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q={query}' },
+    { name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q={query}', canInstaRedirect: true },
     { name: 'Custom', url: '', canInstaRedirect: true }
 ];
 
@@ -126,7 +126,7 @@ const DEFAULT_CONFIG: ConfigData = {
     fallbackEngine: { name: 'Google' },
     instantRedirect: {
         enabled: true,
-        engine: { name: 'Google' }
+        engine: { name: 'DuckDuckGo' }
     },
     searchSettings: {}
 };
@@ -564,6 +564,7 @@ function compileConfig(config: ConfigData): Record<string, string> {
         } else {
             const url = {
                 "Google": "3https://google.com/search?q={query}&btnI",
+                "DuckDuckGo": "3https://duckduckgo.com/?q=%21%20{query}"
             }[config.instantRedirect.engine.name];
             if (url) {
                 compiled["_b_"] = url;
