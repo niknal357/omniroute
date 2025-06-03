@@ -526,6 +526,11 @@ function compileConfig(config: ConfigData): Record<string, string> {
             }
         }
     }
+    for (const bang of config.bangOverrides) {
+        const fmt = (bang.url_encode_placeholder ? 1 : 0) + (bang.url_encode_space_to_plus ? 2 : 0);
+        compiled["_b_" + bang.bang.toLowerCase()] = fmt + bang.url;
+        compiled["_l_" + bang.bang.toLowerCase()] = bang.lone_url;
+    }
     return compiled;
 }
 
