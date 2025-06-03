@@ -22,6 +22,11 @@ const doMagic = () => {
         import('./homePage.ts').then(module => {
             module.renderHomePage();
         });
+        if (localStorage.getItem('saved') !== 'true') {
+            import('./configPage.ts').then(module => {
+                module.compileAndSaveDefaultConfig();
+            });
+        }
     }
 }
 

@@ -734,6 +734,7 @@ export const renderConfigPage = () => {
         setTimeout(() => {
             const serialized = serializeConfig(configData);
             localStorage.clear();
+            localStorage.setItem('saved', "true");
             localStorage.setItem('configData', serialized);
             compiledConfig = compileConfig(configData);
             // save the compiled config to localStorage
@@ -757,3 +758,19 @@ export const renderConfigPage = () => {
     });
     configContainer.appendChild(saveButton);
 };
+
+export const compileAndSaveDefaultConfig = () => {
+    const defaultConfig = { ...DEFAULT_CONFIG };
+    const serialized = serializeConfig(defaultConfig);
+    localStorage.clear();
+    localStorage.setItem('saved', "true");
+    localStorage.setItem('configData', serialized);
+    
+    // Save the compiled config to localStorage
+    const compiledConfig = compileConfig(defaultConfig);
+    for (const key in compiledConfig) {
+        localStorage.setItem(key, compiledConfig[key]);
+    }
+    
+    console.log('Default configuration saved successfully.');
+}
