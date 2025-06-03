@@ -1,15 +1,12 @@
 export const processQuery = (query: string, storageGet: (key: string) => string | null) => {
-    console.log(query)
     // Regex to match bangs (e.g., !google, wikipedia!) but also just a lone bang (!).
     // for characters, we can use \S
     const bangRegex = /(?<!\S)(?:!\S+|\S+!|!)(?!\S)/g;
     const bang = (query.match(bangRegex))?.[0]?.toLowerCase();
-    console.log(query.match(bangRegex));
     // check if the bang exists
     if (bang) {
         // trim the bang of ! on both sides
         const trimmedBang = bang.replace(/^!+|!+$/g, '').toLowerCase();
-        console.log(trimmedBang);
         const trimmedQuery = query.replace(bangRegex, '').trim();
         if (!trimmedQuery) {
             // lone bang detected
@@ -27,12 +24,11 @@ export const processQuery = (query: string, storageGet: (key: string) => string 
                 return bangUrlWithoutFormatting.replace("{query}", encodeComponent(trimmedQuery.trim(), formattingCode === "1" || formattingCode === "3", formattingCode === "2" || formattingCode === "3"));
             }
         }
-        const searchEngineUrl = storageGet("_e") || "https://www.google.com/search?q=";
-        return searchEngineUrl.replace("{query}", encodeComponent(query.trim()));
-    } else {
-        const searchEngineUrl = storageGet("_e") || "https://www.google.com/search?q=";
+        const searchEngineUrl = storageGet("_e") || "https://google.com/search?q=";
         return searchEngineUrl.replace("{query}", encodeComponent(query.trim()));
     }
+    const searchEngineUrl = storageGet("_e") || "https://google.com/search?q=";
+    return searchEngineUrl.replace("{query}", encodeComponent(query.trim()));
 }
 
 function encodeComponent(

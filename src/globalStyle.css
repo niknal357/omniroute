@@ -4,6 +4,7 @@
     --secondary-color: #8b5cf6;
     --accent-color: #06b6d4;
     --success-color: #10b981;
+    --success-dark: #059669;
     --text-primary: #1f2937;
     --text-secondary: #6b7280;
     --bg-primary: #ffffff;
@@ -26,6 +27,7 @@
         --secondary-color: #a78bfa;
         --accent-color: #22d3ee;
         --success-color: #34d399;
+        --success-dark: #10b981;
         --text-primary: #f8fafc;
         --text-secondary: #cbd5e1;
         --bg-primary: #0f172a;

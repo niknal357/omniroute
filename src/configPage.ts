@@ -78,8 +78,7 @@ function engineFullToReference(engine: SearchEngine): EngineReference {
 }
 
 function serializeConfig(config: ConfigData): string {
-    return JSON.stringify(config, (key, value) => {
-        // Remove undefined values
+    return JSON.stringify(config, (_, value) => {
         if (value === undefined) {
             return null;
         }
@@ -648,7 +647,7 @@ export const renderConfigPage = () => {
     resultDisplayURLDisplay.type = 'text';
     resultDisplayURLDisplay.readOnly = true;
     resultDisplay.appendChild(resultDisplayURLDisplay);
-    function updateTryOutResult() {
+    let updateTryOutResult = () => {
         const query = tryOutField.value.trim();
         if (query) {
             const url = processQuery(query, key => compiledConfig[key]);
@@ -659,4 +658,66 @@ export const renderConfigPage = () => {
     }
 
     tryOutField.addEventListener('input', updateTryOutResult);
+
+    // Save Button Section
+    const saveButton = document.createElement('button');
+    saveButton.className = 'config-btn config-btn-primary';
+    saveButton.textContent = 'Save Configuration';
+    
+    function updateSaveButtonState() {
+        const currentSerialized = serializeConfig(configData);
+        const savedConfig = localStorage.getItem('configData');
+        const isDataChanged = currentSerialized !== savedConfig;
+        
+        if (isDataChanged) {
+            saveButton.textContent = 'Save Configuration';
+            saveButton.className = 'config-btn config-btn-primary';
+            saveButton.disabled = false;
+        } else {
+            saveButton.textContent = 'Changes Saved';
+            saveButton.className = 'config-btn config-btn-secondary';
+            saveButton.disabled = true;
+        }
+    }
+    
+    // Update button state initially
+    updateSaveButtonState();
+    
+    // Override the config update functions to also update save button state
+    const originalUpdateTryOutResult = updateTryOutResult;
+    updateTryOutResult = function() {
+        originalUpdateTryOutResult();
+        updateSaveButtonState();
+    };
+    let saving = false;
+    saveButton.addEventListener('click', () => {
+        if (saving) return; // Prevent multiple clicks
+        saving = true;
+        saveButton.textContent = 'Saving...';
+        saveButton.classList.add('config-btn-loading');
+        setTimeout(() => {
+            const serialized = serializeConfig(configData);
+            localStorage.clear();
+            localStorage.setItem('configData', serialized);
+            compiledConfig = compileConfig(configData);
+            // save the compiled config to localStorage
+            for (const key in compiledConfig) {
+                localStorage.setItem(key, compiledConfig[key]);
+            }
+            
+            // Show save confirmation
+            const originalText = saveButton.textContent;
+            saveButton.textContent = 'Saved!';
+            saveButton.classList.remove('config-btn-loading');
+            saveButton.classList.add('config-btn-success');
+            setTimeout(() => {
+                saveButton.textContent = originalText;
+                saveButton.classList.remove('config-btn-success');
+                updateSaveButtonState();
+                saving = false;
+            }, 1500);
+        },0)
+        
+    });
+    configContainer.appendChild(saveButton);
 };

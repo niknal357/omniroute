@@ -57,10 +57,10 @@
     padding: 0.5rem 1.5rem;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.2s;
     margin-right: 0.5rem;
     font-size: 1rem;
     box-sizing: border-box;
+    transition: all 0.2s ease;
 }
 
 .config-btn:last-child {
@@ -70,7 +70,36 @@
 .config-btn:hover {
     background: var(--primary-dark);
 }
+.config-btn-primary {
+    background: var(--primary-color);
+    color: #fff;
+}
 
+.config-btn-primary:hover {
+    background: var(--primary-dark);
+}
+
+.config-btn-primary:disabled {
+    background: var(--text-secondary);
+    color: var(--bg-primary);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.config-btn-loading {
+    position: relative;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.config-btn-success {
+    background: var(--success-color) !important;
+    color: #fff !important;
+}
+
+.config-btn-success:hover {
+    background: var(--success-dark) !important;
+}
 .config-list {
     list-style: none;
     padding: 0;
