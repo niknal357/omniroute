@@ -35,7 +35,7 @@ export const renderHomePage = () => {
                 <div class="url-copy-section">
                     <label for="searchUrl">Search Engine URL:</label>
                     <div class="copy-container">
-                        <input type="text" id="searchUrl" class="url-input" value="https://omniroute.app?q=%s" readonly>
+                        <input type="text" id="searchUrl" class="url-input" value="https://omniroute.app/s?q=%s" readonly>
                         <button class="copy-btn" id="copyBtn">Copy</button>
                     </div>
                 </div>
