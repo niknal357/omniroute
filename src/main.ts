@@ -12,6 +12,10 @@ const doMagic = () => {
         import('./configPage.ts').then(module => {
             module.renderConfigPage();
         });
+    } else if (url.pathname === '/whatsabang') {
+        import('./whatsabangPage.ts').then(module => {
+            module.renderWhatsABangPage();
+        });
     } else {
         if (url.pathname !== '/') {
             // Redirect to homepage if not on config page

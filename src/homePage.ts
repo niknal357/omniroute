@@ -9,7 +9,7 @@ export const renderHomePage = () => {
 
         <div class="container">
             <h1 class="logo">!omniroute</h1>
-            <p class="tagline">A search router that doesn't duck around. Send queries straight to the right place with custom bangs and shortcuts.</p>
+            <p class="tagline">A search router that doesn't duck around. Send queries straight to the right place with custom <a href="/whatsabang" style="color: var(--primary-color);">bangs</a> and shortcuts.</p>
             <div class="buttons">
                 <button class="btn add-to-browser-btn" id="addToBrowser">
                     <span>🌐</span>
@@ -21,7 +21,7 @@ export const renderHomePage = () => {
                 </button>
             </div>
             <div class="footer-links">
-                <a href="https://nikitalurye.com" target="_blank" rel="noopener noreferrer">About Me</a>
+                <a href="/whatsabang" rel="noopener noreferrer">What's a bang?</a>
                 <span class="separator"></span>
                 <a href="https://github.com/niknal357/omniroute" target="_blank" rel="noopener noreferrer">Source Code</a>
             </div>

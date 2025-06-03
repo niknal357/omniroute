@@ -603,14 +603,14 @@ export const renderConfigPage = () => {
     // External Bangs Section
     const prepackagedBangsSection = createSection('Pre-packaged Bangs', configContainer);
     const kagiToggle = createToggle(
-        'Use Kagi Default Bangs',
+        'Use Built-In Bangs',
         configData.useKagiBangs,
         (checked) => {
             configData.useKagiBangs = checked;
             compiledConfig = compileConfig(configData);
             updateTryOutResult();
         },
-        'Enable built-in Kagi bang shortcuts'
+        'Enable the large library of pre-packaged bangs from Kagi.'
     );
     prepackagedBangsSection.appendChild(kagiToggle);
     
@@ -695,6 +695,17 @@ export const renderConfigPage = () => {
     }
 
     tryOutField.addEventListener('input', updateTryOutResult);
+    // add submit (enter) support
+    tryOutField.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            updateTryOutResult();
+            // Open the URL in a new tab
+            const url = resultDisplayURLDisplay.value;
+            if (url) {
+                window.open(url, '_blank');
+            }
+        }
+    });
 
     // Save Button Section
     const saveButton = document.createElement('button');
