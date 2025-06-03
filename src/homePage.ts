@@ -1,5 +1,5 @@
 import './globalStyle.css'
-import './style.css'
+import './homeStyle.css'
 
 export const renderHomePage = () => {
     const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -8,8 +8,8 @@ export const renderHomePage = () => {
         <div class="sparkles" id="sparkles"></div>
 
         <div class="container">
-            <h1 class="logo">omniroute :)</h1>
-            <p class="tagline">A search router for when Und*ck just isn't good enough. Enables power users to route their queries via bangs, and with endless customizability.</p>
+            <h1 class="logo">!omniroute</h1>
+            <p class="tagline">A search router that doesn't duck around. Direct your queries via custom bangs and personalized routing rules.</p>
             <div class="buttons">
                 <button class="btn add-to-browser-btn" id="addToBrowser">
                     <span>🌐</span>
@@ -44,8 +44,8 @@ export const renderHomePage = () => {
                     <ol>
                         <li>Go to Chrome Settings → Search engine → Manage search engines</li>
                         <li>Click "Add" next to "Site search"</li>
-                        <li>Name: "omniroute", Shortcut: "omni", URL: paste the copied URL above</li>
-                        <li>Click "Add", then click the three dots next to omniroute and select "Make default"</li>
+                        <li>Name: "Omniroute", Shortcut: "!omni", URL: paste the copied URL above</li>
+                        <li>Click "Add", then click the three dots next to Omniroute and select "Make default"</li>
                     </ol>
                 </div>
                 <button class="modal-close" id="closeModal">Got it!</button>

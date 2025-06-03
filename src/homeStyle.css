@@ -2,6 +2,7 @@ body {
     overflow: hidden;
     height: 100vh;
     position: relative;
+    user-select: none;
 }
 
 .background-grid {
@@ -52,25 +53,32 @@ body {
         var(--accent-color),
         var(--primary-color)
     );
-    background-size: 300% 300%;
+    background-size: 400% 400%;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     margin-bottom: 1.5rem;
-    animation: gradientShift 6s ease infinite;
+    animation: gradientShift 24s ease infinite, hueShift 192s linear infinite;
     text-shadow: var(--shadow-glow);
     letter-spacing: -0.02em;
+    font-style: italic;
 }
 
 @keyframes gradientShift {
-    0% {
+    0%, 100% {
         background-position: 0% 50%;
     }
     50% {
         background-position: 100% 50%;
     }
+}
+
+@keyframes hueShift {
+    0% {
+        filter: hue-rotate(0deg);
+    }
     100% {
-        background-position: 0% 50%;
+        filter: hue-rotate(360deg);
     }
 }
 
@@ -254,6 +262,7 @@ body {
     opacity: 0;
     visibility: hidden;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: text;
 }
 
 .modal-overlay.show {

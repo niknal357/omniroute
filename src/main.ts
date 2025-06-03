@@ -4,7 +4,7 @@ const doMagic = () => {
     const url = new URL(window.location.href);
     const query = url.searchParams.get("q")?.trim() ?? "";
     if (query) {
-        processQuery(query);
+        window.location.href = processQuery(query, key => localStorage.getItem(key));
         return null;
     }
     if (url.pathname === '/config') {

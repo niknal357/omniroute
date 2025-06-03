@@ -1,10 +1,15 @@
 import './globalStyle.css'
 import './configStyle.css'
+import { kagiBangs } from './kagiBangs.ts';
+import { processQuery } from './queryProcessor.ts';
 
 // Types for configuration data
 interface BangOverride {
     bang: string;
     url: string;
+    lone_url: string;
+    url_encode_placeholder: boolean;
+    url_encode_space_to_plus: boolean;
 }
 
 interface SearchEngine {
@@ -21,11 +26,9 @@ interface EngineReference {
 
 interface ConfigData {
     version: string;
-    useDDGBangs: boolean;
     useKagiBangs: boolean;
     bangOverrides: BangOverride[];
     fallbackEngine: EngineReference;
-    realTimeHintsEngine: EngineReference;
     instantRedirect: {
         enabled: boolean;
         engine: EngineReference;
@@ -33,7 +36,7 @@ interface ConfigData {
     searchSettings: {
         googleUdm14: boolean;
         bingNoJs: boolean;
-        duckSafeSearch: true;
+        duckSafeSearch: boolean;
     };
 }
 
@@ -44,8 +47,8 @@ function generateUniqueId() {
 
 // Default search engines
 const DEFAULT_ENGINES: SearchEngine[] = [
-    { name: 'Google', url: 'https://www.google.com/search?q={query}' },
-    { name: 'Bing', url: 'https://www.bing.com/search?q={query}' },
+    { name: 'Google', url: 'https://google.com/search?q={query}', canInstaRedirect: true },
+    { name: 'Bing', url: 'https://bing.com/search?q={query}' },
     { name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q={query}', canInstaRedirect: true },
     { name: 'Custom', url: '', canInstaRedirect: true }
 ];
@@ -74,7 +77,53 @@ function engineFullToReference(engine: SearchEngine): EngineReference {
     return { name: engine.name };
 }
 
-const INSTANT_REDIRECT_ENGINES = DEFAULT_ENGINES.filter(engine => engine.canInstaRedirect);
+function serializeConfig(config: ConfigData): string {
+    return JSON.stringify(config, (key, value) => {
+        // Remove undefined values
+        if (value === undefined) {
+            return null;
+        }
+        return value;
+    });
+}
+
+const DEFAULT_CONFIG: ConfigData = {
+    version: '1.0',
+    useKagiBangs: true,
+    bangOverrides: [],
+    fallbackEngine: { name: 'Google' },
+    instantRedirect: {
+        enabled: true,
+        engine: { name: 'Google' }
+    },
+    searchSettings: {
+        googleUdm14: false,
+        bingNoJs: false,
+        duckSafeSearch: false
+    }
+};
+
+function deserializeConfig(data: string): ConfigData {
+    try {
+        const parsed = JSON.parse(data);
+        // Validate version
+        if (parsed.version !== DEFAULT_CONFIG.version) {
+            console.warn(`Config version mismatch: expected ${DEFAULT_CONFIG.version}, got ${parsed.version}`);
+        }
+        // Ensure all required fields are present
+        return {
+            ...DEFAULT_CONFIG,
+            ...parsed,
+            bangOverrides: parsed.bangOverrides || [],
+            fallbackEngine: parsed.fallbackEngine || DEFAULT_CONFIG.fallbackEngine,
+            instantRedirect: parsed.instantRedirect || DEFAULT_CONFIG.instantRedirect,
+            searchSettings: parsed.searchSettings || DEFAULT_CONFIG.searchSettings
+        };
+    } catch (e) {
+        console.error('Failed to parse config:', e);
+        return { ...DEFAULT_CONFIG }; // Return default config on error
+    }
+}
 
 function createSection(title: string, cc: HTMLDivElement) {
     const section = document.createElement('section');
@@ -211,7 +260,7 @@ function createBangList(
             li.innerHTML = `
                 <div class="config-bang-display">
                     <span class="config-bang-name">!${bang.bang}</span>
-                    <span class="config-bang-url">${bang.url}</span>
+                    <span class="config-bang-url">${bang.lone_url}</span>
                     <div class="config-bang-actions">
                         <button class="config-btn config-btn-small edit-btn">Edit</button>
                         <button class="config-btn config-btn-small config-btn-danger remove-btn">Remove</button>
@@ -220,6 +269,17 @@ function createBangList(
                 <div class="config-bang-edit" style="display: none;">
                     <input type="text" class="config-input bang-input" value="${bang.bang}" placeholder="Bang (without !)">
                     <input type="text" class="config-input url-input" value="${bang.url}" placeholder="URL (use {query} placeholder)">
+                    <input type="text" class="config-input lone-url-input" value="${bang.lone_url}" placeholder="Lone URL (when bang is used alone)">
+                    <div class="config-bang-checkboxes">
+                        <label>
+                            <input type="checkbox" class="url-encode-checkbox" ${bang.url_encode_placeholder ? 'checked' : ''}>
+                            URL encode query
+                        </label>
+                        <label>
+                            <input type="checkbox" class="space-plus-checkbox" ${bang.url_encode_space_to_plus ? 'checked' : ''}>
+                            Encode spaces as +
+                        </label>
+                    </div>
                     <div class="config-bang-edit-actions">
                         <button class="config-btn save-btn">Save</button>
                         <button class="config-btn config-btn-secondary cancel-btn">Cancel</button>
@@ -235,6 +295,9 @@ function createBangList(
             const edit = li.querySelector('.config-bang-edit') as HTMLDivElement;
             const bangInput = li.querySelector('.bang-input') as HTMLInputElement;
             const urlInput = li.querySelector('.url-input') as HTMLInputElement;
+            const loneUrlInput = li.querySelector('.lone-url-input') as HTMLInputElement;
+            const urlEncodeCheckbox = li.querySelector('.url-encode-checkbox') as HTMLInputElement;
+            const spacePlusCheckbox = li.querySelector('.space-plus-checkbox') as HTMLInputElement;
             
             editBtn.addEventListener('click', () => {
                 display.style.display = 'none';
@@ -247,11 +310,21 @@ function createBangList(
                 edit.style.display = 'none';
                 bangInput.value = bang.bang;
                 urlInput.value = bang.url;
+                loneUrlInput.value = bang.lone_url;
+                urlEncodeCheckbox.checked = bang.url_encode_placeholder;
+                spacePlusCheckbox.checked = bang.url_encode_space_to_plus;
+                renderBangs();
             });
             
             saveBtn.addEventListener('click', () => {
                 if (bangInput.value && urlInput.value) {
-                    onUpdate(index, { bang: bangInput.value, url: urlInput.value });
+                    onUpdate(index, {
+                        bang: bangInput.value,
+                        url: urlInput.value,
+                        lone_url: loneUrlInput.value,
+                        url_encode_placeholder: urlEncodeCheckbox.checked,
+                        url_encode_space_to_plus: spacePlusCheckbox.checked
+                    });
                     display.style.display = 'block';
                     edit.style.display = 'none';
                     renderBangs();
@@ -269,28 +342,55 @@ function createBangList(
     
     // Add new bang form
     const addForm = document.createElement('div');
-    addForm.className = 'config-inline-form';
+    addForm.className = 'config-form';
     addForm.innerHTML = `
-        <input type="text" class="config-input" id="newBangName" placeholder="Bang (without !)">
-        <input type="text" class="config-input" id="newBangUrl" placeholder="URL (use {query} placeholder)">
+        <input type="text" class="config-input config-fw" id="newBangName" placeholder="Bang (without !)">
+        <input type="text" class="config-input config-fw" id="newBangUrl" placeholder="URL (use {query} placeholder)">
+        <input type="text" class="config-input config-fw" id="newBangLoneUrl" placeholder="Lone URL (when bang is used alone)">
+        <div class="config-bang-checkboxes config-fw">
+            <div class="config-toggle">
+            <label>
+                <input type="checkbox" id="newUrlEncode" class="config-checkbox" checked>
+                URL encode query
+            </label>
+            </div>
+            <div class="config-toggle">
+            <label>
+                <input type="checkbox" id="newSpacePlus" class="config-checkbox" checked>
+                Encode spaces as +
+            </label>
+            </div>
+        </div>
         <button class="config-btn" id="addBangBtn">Add Bang</button>
     `;
     
     const addBtn = addForm.querySelector('#addBangBtn') as HTMLButtonElement;
     const nameInput = addForm.querySelector('#newBangName') as HTMLInputElement;
     const urlInput = addForm.querySelector('#newBangUrl') as HTMLInputElement;
+    const loneUrlInput = addForm.querySelector('#newBangLoneUrl') as HTMLInputElement;
+    const urlEncodeInput = addForm.querySelector('#newUrlEncode') as HTMLInputElement;
+    const spacePlusInput = addForm.querySelector('#newSpacePlus') as HTMLInputElement;
     
     addBtn.addEventListener('click', () => {
         if (nameInput.value && urlInput.value) {
-            onAdd({ bang: nameInput.value, url: urlInput.value });
+            onAdd({
+                bang: nameInput.value,
+                url: urlInput.value,
+                lone_url: loneUrlInput.value,
+                url_encode_placeholder: urlEncodeInput.checked,
+                url_encode_space_to_plus: spacePlusInput.checked
+            });
             nameInput.value = '';
             urlInput.value = '';
+            loneUrlInput.value = '';
+            urlEncodeInput.checked = true;
+            spacePlusInput.checked = true;
             renderBangs();
         }
     });
     
     // Enter key support
-    [nameInput, urlInput].forEach(input => {
+    [nameInput, urlInput, loneUrlInput].forEach(input => {
         input.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') addBtn.click();
         });
@@ -368,7 +468,7 @@ function createInstantRedirectSection(
     container.className = 'config-instant-redirect';
     
     const toggle = createToggle(
-        'Enable Instant Redirect to First Result',
+        'Feeling Lucky Shortcut',
         config.enabled,
         (enabled) => onChange({ ...config, enabled }),
         'Automatically redirect to the first search result using an empty bang (!)'
@@ -398,6 +498,37 @@ function createInstantRedirectSection(
     return container;
 }
 
+function compileConfig(config: ConfigData): Record<string, string> {
+    // this function compiles the configuration into a dictionary of bang -> URL mappings
+    // get the search engine URL
+    const fallbackEngine = engineReferenceToFull(config.fallbackEngine);
+    const fallbackUrl = fallbackEngine.url;
+    const compiled: Record<string, string> = {};
+    compiled["_e"] = fallbackEngine.url;
+    if (config.useKagiBangs) {
+        kagiBangs.forEach(bang => {
+            compiled["_l_" + bang.b] = bang.n;
+            const fmt = (bang.f).toString();
+            compiled["_b_" + bang.b] = fmt + bang.u.replace('{engine}', fallbackUrl).replace('{query}', '{query}' + bang.a);
+        });
+    }
+    if (config.instantRedirect.enabled) {
+        const instaRedirectEngineName = config.instantRedirect.engine.name;
+        if (instaRedirectEngineName === 'Custom') {
+            compiled["_b_"] = "3" + config.instantRedirect.engine.url;
+        } else {
+            const url = {
+                "Google": "3https://google.com/search?q={query}&btnI",
+                "DuckDuckGo": "3https://duckduckgo.com/?q=\\{query}",
+            }[config.instantRedirect.engine.name];
+            if (url) {
+                compiled["_b_"] = url;
+            }
+        }
+    }
+    return compiled;
+}
+
 // Main render function with all components
 export const renderConfigPage = () => {
     const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -408,46 +539,26 @@ export const renderConfigPage = () => {
     `;
     const configContainer = app.querySelector<HTMLDivElement>('#configContainer')!;
     
-    // Sample configuration data (replace with your actual data loading)
-    let configData: ConfigData = {
-        version: '1.0',
-        useDDGBangs: true,
-        useKagiBangs: true,
-        bangOverrides: [
-            { bang: 'gh', url: 'https://github.com/search?q={query}' },
-            { bang: 'so', url: 'https://stackoverflow.com/search?q={query}' }
-        ],
-        fallbackEngine: DEFAULT_ENGINES[0],
-        realTimeHintsEngine: DEFAULT_ENGINES[0],
-        instantRedirect: {
-            enabled: false,
-            engine: INSTANT_REDIRECT_ENGINES[0]
-        },
-        searchSettings: {
-            googleUdm14: false,
-            bingNoJs: false,
-            duckSafeSearch: true
-        }
-    };
+    // Load saved configuration or use default
+    let savedConfig = localStorage.getItem('configData');
+    let configData: ConfigData;
+    if (savedConfig) {
+        configData = deserializeConfig(savedConfig);
+    } else {
+        configData = { ...DEFAULT_CONFIG };
+    }
+
+    let compiledConfig = compileConfig(configData);
     
     // External Bangs Section
     const prepackagedBangsSection = createSection('Pre-packaged Bangs', configContainer);
-    const ddgToggle = createToggle(
-        'Use DuckDuckGo Packaged Bangs',
-        configData.useDDGBangs,
-        (checked) => {
-            configData.useDDGBangs = checked;
-            // Save config here
-        },
-        'Enable built-in DuckDuckGo bang shortcuts'
-    );
-    prepackagedBangsSection.appendChild(ddgToggle);
     const kagiToggle = createToggle(
         'Use Kagi Default Bangs',
         configData.useKagiBangs,
         (checked) => {
             configData.useKagiBangs = checked;
-            // Save config here
+            compiledConfig = compileConfig(configData);
+            updateTryOutResult();
         },
         'Enable built-in Kagi bang shortcuts'
     );
@@ -459,15 +570,18 @@ export const renderConfigPage = () => {
         configData.bangOverrides,
         (bang) => {
             configData.bangOverrides.push(bang);
-            // Save config here
+            compiledConfig = compileConfig(configData);
+            updateTryOutResult();
         },
         (index) => {
             configData.bangOverrides.splice(index, 1);
-            // Save config here
+            compiledConfig = compileConfig(configData);
+            updateTryOutResult();
         },
         (index, bang) => {
             configData.bangOverrides[index] = bang;
-            // Save config here
+            compiledConfig = compileConfig(configData);
+            updateTryOutResult();
         }
     );
     bangsSection.appendChild(bangsList);
@@ -480,7 +594,7 @@ export const renderConfigPage = () => {
     //     configData.fallbackEngine,
     //     (engine) => {
     //         configData.fallbackEngine = engine;
-    //         // Save config here
+    //         compiledConfig = compileConfig(configData);
     //     }
     // );
 
@@ -490,23 +604,11 @@ export const renderConfigPage = () => {
         (engine, settings) => {
             configData.fallbackEngine = engine;
             configData.searchSettings = settings;
-            // Save config here
+            compiledConfig = compileConfig(configData);
+            updateTryOutResult();
         }
     );
     fallbackSection.appendChild(searchSettings);
-    
-    // Real-time Hints Section
-    const hintsSection = createSection('Real-time Search Hints', configContainer);
-    const hintsDropdown = createDropdown(
-        'Search Engine for Hints',
-        DEFAULT_ENGINES,
-        configData.realTimeHintsEngine,
-        (engine) => {
-            configData.realTimeHintsEngine = engine;
-            // Save config here
-        }
-    );
-    hintsSection.appendChild(hintsDropdown);
     
     // Instant Redirect Section
     const redirectSection = createSection('Instant Redirect', configContainer);
@@ -514,8 +616,42 @@ export const renderConfigPage = () => {
         configData.instantRedirect,
         (config) => {
             configData.instantRedirect = config;
-            // Save config here
+            compiledConfig = compileConfig(configData);
+            updateTryOutResult();
         }
     );
     redirectSection.appendChild(instantRedirect);
+
+    const tryOutSection = createSection('Try Out Your Configuration', configContainer);
+    const tryOutField = document.createElement('input');
+    tryOutField.type = 'text';
+    tryOutField.className = 'config-input config-custom-input';
+    tryOutField.placeholder = 'Enter search query';
+    tryOutField.id = 'tryOutField';
+    tryOutField.autocomplete = 'off';
+    tryOutSection.appendChild(tryOutField);
+    // next, we want to make a thing that will say This query will redirect you to: `some url here`
+    // we should probably use <input type="text" id="searchUrl" class="url-input" value="https://omniroute.app?q=%s" readonly>
+    const resultDisplay = document.createElement('div');
+    resultDisplay.className = 'config-tryout-result';
+    resultDisplay.id = 'tryOutResult';
+    resultDisplay.textContent = 'This query will redirect you to: ';
+    tryOutSection.appendChild(resultDisplay);
+    const resultDisplayURLDisplay = document.createElement('input');
+    resultDisplayURLDisplay.className = 'config-tryout-url';
+    resultDisplayURLDisplay.id = 'tryOutResultURL';
+    resultDisplayURLDisplay.type = 'text';
+    resultDisplayURLDisplay.readOnly = true;
+    resultDisplay.appendChild(resultDisplayURLDisplay);
+    function updateTryOutResult() {
+        const query = tryOutField.value.trim();
+        if (query) {
+            const url = processQuery(query, key => compiledConfig[key]);
+            resultDisplayURLDisplay.value = url;
+        } else {
+            resultDisplayURLDisplay.value = '';
+        }
+    }
+
+    tryOutField.addEventListener('input', updateTryOutResult);
 };
