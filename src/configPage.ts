@@ -125,8 +125,8 @@ const DEFAULT_CONFIG: ConfigData = {
     bangOverrides: [],
     fallbackEngine: { name: 'Google' },
     instantRedirect: {
-        enabled: true,
-        engine: { name: 'DuckDuckGo' }
+        enabled: false,
+        engine: { name: 'Google' }
     },
     searchSettings: {}
 };
@@ -504,7 +504,7 @@ function createInstantRedirectSection(
         'Feeling Lucky Shortcut',
         config.enabled,
         (enabled) => onChange({ ...config, enabled }),
-        'Automatically redirect to the first search result using an empty bang (!)'
+        '(May not work as intended) Automatically redirect to the first search result using an empty bang (!)'
     );
     
     const INSTANT_REDIRECT_ENGINES = DEFAULT_ENGINES.filter(engine => engine.canInstaRedirect);
@@ -564,7 +564,7 @@ function compileConfig(config: ConfigData): Record<string, string> {
         } else {
             const url = {
                 "Google": "3https://google.com/search?q={query}&btnI",
-                "DuckDuckGo": "3https://duckduckgo.com/?q=%21%20{query}"
+                "DuckDuckGo": "3https://duckduckgo.com/?q=!+{query}"
             }[config.instantRedirect.engine.name];
             if (url) {
                 compiled["_b_"] = url;
