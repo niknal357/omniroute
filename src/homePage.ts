@@ -9,7 +9,7 @@ export const renderHomePage = () => {
 
         <div class="container">
             <h1 class="logo">!omniroute</h1>
-            <p class="tagline">A search router that doesn't duck around. Direct your queries via custom bangs and personalized routing rules.</p>
+            <p class="tagline">A search router that doesn't duck around. Send queries straight to the right place with custom bangs and shortcuts.</p>
             <div class="buttons">
                 <button class="btn add-to-browser-btn" id="addToBrowser">
                     <span>🌐</span>
