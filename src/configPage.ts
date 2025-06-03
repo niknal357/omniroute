@@ -33,11 +33,27 @@ interface ConfigData {
         enabled: boolean;
         engine: EngineReference;
     };
-    searchSettings: {
-        googleUdm14: boolean;
-        bingNoJs: boolean;
-        duckSafeSearch: boolean;
-    };
+    searchSettings: Record<string, boolean>;
+}
+
+function getSearchSetting(key: string, configData: ConfigData): boolean {
+    if (configData.searchSettings[key] !== undefined) {
+        return configData.searchSettings[key];
+    }
+    for (const setting of FALLBACK_ENGINE_SETTINGS) {
+        if (setting.id === key) {
+            return setting.defaultValue;
+        }
+    }
+    return false;
+}
+
+interface FallbackEngineSetting {
+    name: string;
+    description: string;
+    defaultValue: boolean;
+    engines: string[];
+    id: string; // Unique ID for the setting
 }
 
 let uniqueIdCounter = 0;
@@ -49,9 +65,26 @@ function generateUniqueId() {
 const DEFAULT_ENGINES: SearchEngine[] = [
     { name: 'Google', url: 'https://google.com/search?q={query}', canInstaRedirect: true },
     { name: 'Bing', url: 'https://bing.com/search?q={query}' },
-    { name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q={query}', canInstaRedirect: true },
+    { name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q={query}' },
     { name: 'Custom', url: '', canInstaRedirect: true }
 ];
+
+const FALLBACK_ENGINE_SETTINGS: FallbackEngineSetting[] = [
+    {
+        name: 'Disable AI Overviews',
+        description: 'Use Google\'s traditional search results without AI-generated overviews',
+        defaultValue: false,
+        engines: ['Google'],
+        id: 'disableAIOverviews'
+    },
+    {
+        name: 'No JavaScript',
+        description: 'Use a lightweight version of {engine} that does not require JavaScript',
+        defaultValue: false,
+        engines: ['DuckDuckGo'],
+        id: 'noJs'
+    }
+]
 
 // Helper functions to convert between sparse and full engine data
 function engineReferenceToFull(ref: EngineReference): SearchEngine {
@@ -95,11 +128,7 @@ const DEFAULT_CONFIG: ConfigData = {
         enabled: true,
         engine: { name: 'Google' }
     },
-    searchSettings: {
-        googleUdm14: false,
-        bingNoJs: false,
-        duckSafeSearch: false
-    }
+    searchSettings: {}
 };
 
 function deserializeConfig(data: string): ConfigData {
@@ -417,6 +446,7 @@ function createSearchSettings(
         (engineRef) => {
             const newSettings = { ...settings };
             onChange(engineRef, newSettings);
+            updateSettingsVisibility(engineRef);
         }
     );
     outerContainer.appendChild(fallbackDropdown);
@@ -424,37 +454,41 @@ function createSearchSettings(
     const container = document.createElement('div');
     container.className = 'config-search-settings config-indented';
     
-    const toggles = [
-        {
-            key: 'googleUdm14' as keyof typeof settings,
-            label: 'Google Web Search Only (udm=14)',
-            description: 'Removes AI answers and focuses on traditional web results'
-        },
-        {
-            key: 'bingNoJs' as keyof typeof settings,
-            label: 'Bing No JavaScript',
-            description: 'Use lightweight Bing interface'
-        },
-        {
-            key: 'duckSafeSearch' as keyof typeof settings,
-            label: 'DuckDuckGo Safe Search',
-            description: 'Enable safe search filtering'
+    function updateSettingsVisibility(engineRef: EngineReference) {
+        const currentEngine = engineReferenceToFull(engineRef);
+        container.innerHTML = '';
+        
+        FALLBACK_ENGINE_SETTINGS.forEach(setting => {
+            if (setting.engines.includes(currentEngine.name)) {
+                const toggle = createToggle(
+                    setting.name,
+                    getSearchSetting(setting.id, { 
+                        version: '', 
+                        useKagiBangs: false, 
+                        bangOverrides: [], 
+                        fallbackEngine: engineRef, 
+                        instantRedirect: { enabled: false, engine: engineRef }, 
+                        searchSettings: settings 
+                    }),
+                    (checked) => {
+                        const newSettings = { ...settings, [setting.id]: checked };
+                        onChange(engineRef, newSettings);
+                    },
+                    setting.description.replace('{engine}', currentEngine.name)
+                );
+                container.appendChild(toggle);
+            }
+        });
+        // check if the container is empty, if so, hide it
+        if (container.children.length === 0) {
+            container.style.display = 'none';
         }
-    ];
+        else {
+            container.style.display = 'block';
+        }
+    }
     
-    toggles.forEach(({ key, label, description }) => {
-        const toggle = createToggle(
-            label,
-            settings[key],
-            (checked) => {
-                const newSettings = { ...settings, [key]: checked };
-                onChange(fallbackEngineRef, newSettings);
-            },
-            description
-        );
-        container.appendChild(toggle);
-    });
-    
+    updateSettingsVisibility(fallbackEngineRef);
     outerContainer.appendChild(container);
     return outerContainer;
 }
@@ -501,9 +535,21 @@ function compileConfig(config: ConfigData): Record<string, string> {
     // this function compiles the configuration into a dictionary of bang -> URL mappings
     // get the search engine URL
     const fallbackEngine = engineReferenceToFull(config.fallbackEngine);
-    const fallbackUrl = fallbackEngine.url;
+    let fallbackUrl = fallbackEngine.url;
+    const disableAI = getSearchSetting('disableAIOverviews', config);
+    const noJs = getSearchSetting('noJs', config);
+    if (fallbackEngine.name === 'Google') {
+        if (disableAI) {
+            fallbackUrl += '&udm=14';
+        }
+    } else if (fallbackEngine.name === 'Bing') {
+    } else if (fallbackEngine.name === 'DuckDuckGo') {
+        if (noJs) {
+            fallbackUrl = 'https://html.duckduckgo.com/html/?q={query}';
+        }
+    }
     const compiled: Record<string, string> = {};
-    compiled["_e"] = fallbackEngine.url;
+    compiled["_e"] = fallbackUrl;
     if (config.useKagiBangs) {
         kagiBangs.forEach(bang => {
             compiled["_l_" + bang.b] = bang.n;
@@ -518,7 +564,6 @@ function compileConfig(config: ConfigData): Record<string, string> {
         } else {
             const url = {
                 "Google": "3https://google.com/search?q={query}&btnI",
-                "DuckDuckGo": "3https://duckduckgo.com/?q=\\{query}",
             }[config.instantRedirect.engine.name];
             if (url) {
                 compiled["_b_"] = url;
@@ -592,15 +637,6 @@ export const renderConfigPage = () => {
     
     // Fallback Engine Section
     const fallbackSection = createSection('Fallback Search Engine', configContainer);
-    // const fallbackDropdown = createDropdown(
-    //     'Default Search Engine',
-    //     DEFAULT_ENGINES,
-    //     configData.fallbackEngine,
-    //     (engine) => {
-    //         configData.fallbackEngine = engine;
-    //         compiledConfig = compileConfig(configData);
-    //     }
-    // );
 
     const searchSettings = createSearchSettings(
         configData.fallbackEngine,
