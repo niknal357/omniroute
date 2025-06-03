@@ -72,7 +72,7 @@ const DEFAULT_ENGINES: SearchEngine[] = [
 const FALLBACK_ENGINE_SETTINGS: FallbackEngineSetting[] = [
     {
         name: 'Disable AI Overviews',
-        description: 'Use Google\'s traditional search results without AI-generated overviews',
+        description: 'Use Google\'s traditional search results without AI-generated overviews. (&udm=14)',
         defaultValue: false,
         engines: ['Google'],
         id: 'disableAIOverviews'
